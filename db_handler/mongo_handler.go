@@ -89,3 +89,14 @@ func (self *MongoHandler)InsertOne(data map[string]string) error {
 
 	return nil
 }
+
+func (self *MongoHandler) DeleteOne(key string, value string) error {
+	filter := bson.D{{Key: key, Value: value}}
+
+	_, err := self.Collection.DeleteOne(context.TODO(), filter)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
