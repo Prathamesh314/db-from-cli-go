@@ -6,6 +6,7 @@ import (
 	"log"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -72,10 +73,12 @@ func (self *MongoHandler)ConnectToMongoDB() error{
 
 
 	fmt.Println("Connected to MongoDB!")
-
-	collection := client.Database(self.DatabaseName).Collection(self.CollectionName)
-	self.Collection = collection
+	if self.DatabaseName != "" && self.CollectionName != "" {
+		collection := client.Database(self.DatabaseName).Collection(self.CollectionName)
+		self.Collection = collection
+	}
 	self.Client = client
+
 	return nil
 }
 
@@ -106,7 +109,7 @@ func (self *MongoHandler)FindAll() ([]map[string]interface{}, error) {
 	return results, nil
 }
 
-func (self *MongoHandler)InsertOne(data map[string]string) error {
+func (self *MongoHandler)InsertOne(data map[string]interface{}) error {
 	insertion_data := bson.D{}
 	for key, value := range data {
 		insertion_data = append(insertion_data, bson.E{Key: key, Value: value})
@@ -120,10 +123,31 @@ func (self *MongoHandler)InsertOne(data map[string]string) error {
 	return nil
 }
 
+
+func (self *MongoHandler) DeleteByID(id primitive.ObjectID) error {
+    filter := bson.M{"_id": id}
+
+    _, err := self.Collection.DeleteOne(context.TODO(), filter)
+    if err != nil {
+        return err
+    }
+
+    return nil
+}
+
 func (self *MongoHandler) DeleteOne(key string, value string) error {
 	filter := bson.D{{Key: key, Value: value}}
 
 	_, err := self.Collection.DeleteOne(context.TODO(), filter)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (self *MongoHandler) DeleteAll() error {
+	_, err := self.Collection.DeleteMany(context.TODO(), bson.D{{}})
 	if err != nil {
 		return err
 	}
@@ -146,12 +170,110 @@ func (self *MongoHandler) Help(){
 	fmt.Println("3. Find One")
 	fmt.Println("4. Find All")
 	fmt.Println("5. Insert One")
-	fmt.Println("6. Insert Many")
-	fmt.Println("7. Update One")
-	fmt.Println("8. Update Many")
-	fmt.Println("9. Delete One")
-	fmt.Println("10. Delete Many")
-	fmt.Println("11. Exit")
+	fmt.Println("6. Delete One")
+	fmt.Println("7. Delete All")
+	fmt.Println("8. Exit")
+}
+
+func (self *MongoHandler) MongoRunner(){
+	for{
+		var option string
+	var collection_name string
+	var database_name string
+
+	fmt.Print("> ")
+	fmt.Scanln(&option)
+	switch option {
+	case "0":
+		err := self.ListDbAndCollections()
+		if err != nil {
+			fmt.Println("Error listing databases and collections: ", err)
+		}
+	case "1":
+			fmt.Println("Enter new collection name: ")
+			fmt.Scanln(&collection_name)
+			err := self.ChangeCollection(collection_name)
+			if err != nil {
+				fmt.Println("Error changing collection: ", err)
+			}
+
+	case "2":
+		fmt.Println("Enter new database name: ")
+		fmt.Scanln(&database_name)
+		fmt.Println("Enter new collection name: ")
+		fmt.Scanln(&collection_name)
+		err := self.ChangeDatabase(database_name, collection_name)
+		if err != nil {
+			fmt.Println("Error changing database: ", err)
+		}
+	case "3":
+		fmt.Println("Enter (key, value) to find: ")
+		var key string
+		var value string
+		fmt.Scanln(&key, &value)
+		fmt.Printf("Finding one document with %s: %s\n", key, value)
+		result, err := self.FindOne(key, value)
+		if err != nil {
+			fmt.Println("Error finding one document: ", err)
+		}
+		arr := []map[string]interface{}{result}
+		PrettyPrint(arr);
+	case "4":
+		result, err := self.FindAll()
+		if err != nil {
+			fmt.Println("Error finding all documents: ", err)
+		}
+		PrettyPrint(result)
+	case "5":
+		document_map := make(map[string]interface{})
+		for{
+			var key, value string
+			fmt.Println("Enter (key, value) to insert: ")
+			fmt.Scanln(&key, &value)
+			if key == "" || value == "" {
+				break
+			}
+			document_map[key] = value
+		}
+		fmt.Println("Inserting document: ", document_map)
+		err := self.InsertOne(document_map)
+		if err != nil {
+			fmt.Println("Error inserting one document: ", err)
+		}
+		fmt.Println("Document inserted successfully!")
+
+	case "6":
+		fmt.Println("Enter (key, value) to delete: ")
+		var key, value string
+		fmt.Scanln(&key, &value)
+		if key == "_id" {
+			// Handle _id as an ObjectID
+			objectID, err := primitive.ObjectIDFromHex(value)
+			if err != nil {
+				fmt.Println("Error converting value to ObjectID: ", err)
+				return
+			}
+			err = self.DeleteByID(objectID)
+		} else {
+			err := self.DeleteOne(key, value)
+			if err != nil {
+				fmt.Println("Error deleting one document: ", err)
+				return
+			}
+		}
+		fmt.Println("Document deleted successfully!")
+	case "7":
+		err := self.DeleteAll()
+		if err != nil {
+			fmt.Println("Error deleting all documents: ", err)
+		}
+		fmt.Println("All documents deleted successfully!")
+	default:
+		self.CloseConnection()
+		fmt.Println("Disconnected from MongoDB!")
+			return
+		}
+	}
 }
 
 func (self *MongoHandler) ShowDetails() {
@@ -177,6 +299,7 @@ func (self *MongoHandler) ChangeDatabase(database_name string, collection_name s
 }
 
 func (self *MongoHandler) ListDbAndCollections() (error) {
+	ClearTerminal()
 	databases, err := self.ListAllDatabases()
 	if err != nil {
 		return err

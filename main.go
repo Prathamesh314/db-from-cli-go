@@ -41,76 +41,25 @@ func main() {
 		if mongodb_connectin_uri == "" {
 			mongodb_connectin_uri = mongodb_uri
 		}
-		var database_name string
-		fmt.Println("Enter database name: ")
-		fmt.Scanln(&database_name)
-		var collection_name string
-		fmt.Println("Enter collection name: ")
-		fmt.Scanln(&collection_name)
 		mongo_handler := db_handler.MongoHandler{
 			MongoDBURI: mongodb_connectin_uri,
-			DatabaseName: database_name,
-			CollectionName: collection_name,
 		}
-		err := mongo_handler.ConnectToMongoDB()
+		err = mongo_handler.ConnectToMongoDB()
+		if err != nil {
+			fmt.Println("Error connecting to MongoDB: ", err)
+			return
+		}
+		db_handler.ClearTerminal()
+		mongo_handler.ListDbAndCollections()
 		if err != nil {
 			fmt.Println("Error connecting to MongoDB: ", err)
 			return
 		}
 		fmt.Println("Connected to MongoDB!")
-		var option string
 		db_handler.ClearTerminal()
 		mongo_handler.ShowDetails()
 		mongo_handler.Help()
-		for {
-			fmt.Print("> ")
-			fmt.Scanln(&option)
-			switch option {
-			case "0":
-				err := mongo_handler.ListDbAndCollections()
-				if err != nil {
-					fmt.Println("Error listing databases and collections: ", err)
-				}
-			case "1":
-					fmt.Println("Enter new collection name: ")
-					fmt.Scanln(&collection_name)
-					err := mongo_handler.ChangeCollection(collection_name)
-					if err != nil {
-						fmt.Println("Error changing collection: ", err)
-					}
-
-				case "2":
-					fmt.Println("Enter new database name: ")
-					fmt.Scanln(&database_name)
-					fmt.Println("Enter new collection name: ")
-					fmt.Scanln(&collection_name)
-					err := mongo_handler.ChangeDatabase(database_name, collection_name)
-					if err != nil {
-						fmt.Println("Error changing database: ", err)
-					}
-				case "3":
-					fmt.Println("Enter (key, value) to find: ")
-					var key string
-					var value string
-					fmt.Scanln(&key, &value)
-					fmt.Printf("Finding one document with %s: %s\n", key, value)
-					result, err := mongo_handler.FindOne(key, value)
-					if err != nil {
-						fmt.Println("Error finding one document: ", err)
-					}
-					fmt.Println("Found one document: ", result)
-				case "4":
-					result, err := mongo_handler.FindAll()
-					if err != nil {
-						fmt.Println("Error finding all documents: ", err)
-					}
-					db_handler.PrettyPrint(result)
-				default:
-					mongo_handler.CloseConnection()
-					fmt.Println("Disconnected from MongoDB!")
-					return
-				}
-			}
+		mongo_handler.MongoRunner()
 	case "2":
 		fmt.Println("Connecting to MySQL...")
 	case "3":
