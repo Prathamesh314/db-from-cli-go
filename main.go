@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"context"
 	"db_cli/db_handler"
 	"fmt"
 	"os"
@@ -24,11 +23,11 @@ func main() {
 	}
 
 	mongodb_uri := os.Getenv("MONGODB_URI")
-	POSTGRES_USER := os.Getenv("POSTGRES_USERNAME")
+	POSTGRES_USER := os.Getenv("POSTGRES_USER")
 	POSTGRES_PASSWORD := os.Getenv("POSTGRES_PASSWORD")
 	POSTGRES_HOST := os.Getenv("POSTGRES_HOST")
 	POSTGRES_PORT := os.Getenv("POSTGRES_PORT")
-	POSTGRES_DATABASE := os.Getenv("POSTGRES_DATABASE")
+	POSTGRES_DATABASE := os.Getenv("POSTGRES_DEFAULT_DB")
 
 	fmt.Scanln(&db_name)
 
@@ -63,11 +62,36 @@ func main() {
 	case "2":
 		fmt.Println("Connecting to MySQL...")
 	case "3":
-		postgres_username := POSTGRES_USER
-		postgres_password := POSTGRES_PASSWORD
-		postgres_host := POSTGRES_HOST
-		postgres_port := POSTGRES_PORT
-		postgres_database := POSTGRES_DATABASE
+		var postgres_username string
+		var postgres_password string
+		var postgres_host string
+		var postgres_port string
+		var postgres_database string
+		fmt.Println("Enter Postgres username: ")
+		fmt.Scanln(&postgres_username)
+		fmt.Println("Enter Postgres password: ")
+		fmt.Scanln(&postgres_password)
+		fmt.Println("Enter Postgres host: ")
+		fmt.Scanln(&postgres_host)
+		fmt.Println("Enter Postgres port: ")
+		fmt.Scanln(&postgres_port)
+		fmt.Println("Enter Postgres database: ")
+		fmt.Scanln(&postgres_database)
+		if postgres_username == "" {
+			postgres_username = POSTGRES_USER
+		}
+		if postgres_password == "" {
+			postgres_password = POSTGRES_PASSWORD
+		}
+		if postgres_host == "" {
+			postgres_host = POSTGRES_HOST
+		}
+		if postgres_port == "" {
+			postgres_port = POSTGRES_PORT
+		}
+		if postgres_database == "" {
+			postgres_database = POSTGRES_DATABASE
+		}
 		postgres_handler := db_handler.PostgresHandler{
 			POSTGRES_USER: postgres_username,
 			POSTGRES_PASSWORD: postgres_password,
@@ -75,6 +99,11 @@ func main() {
 			POSTGRES_PORT: postgres_port,
 			POSTGRES_DATABASE: postgres_database,
 		}
+		fmt.Println(postgres_handler.POSTGRES_USER)
+		fmt.Println(postgres_handler.POSTGRES_PASSWORD)
+		fmt.Println(postgres_handler.POSTGRES_HOST)
+		fmt.Println(postgres_handler.POSTGRES_PORT)
+		fmt.Println(postgres_handler.POSTGRES_DATABASE)
 		err := postgres_handler.ConnectToPostgres()
 		if err != nil {
 			fmt.Println("Error connecting to Postgres: ", err)
@@ -82,42 +111,47 @@ func main() {
 		}
 		fmt.Println("Connected to Postgres!")
 
-		scanner := bufio.NewScanner(os.Stdin)
-		var query string
-		fmt.Println("Enter space-separated values:")
-
-		scanner.Scan()
-		query = scanner.Text()
-
-		rows, err := postgres_handler.POOl.Query(context.Background(), query)
-		if err != nil {
-			fmt.Println("Error executing query: ", err)
-			return
-		}
-		defer rows.Close()
-
-		columnNames := rows.FieldDescriptions()
-		results := []map[string]interface{}{}
-
-		for rows.Next() {
-			rowMap := make(map[string]interface{})
-
-			values, err := rows.Values()
-			if err != nil {
-				fmt.Println("Error scanning row: ", err)
-				continue
+		postgres_handler.ShowHelp()
+		var command string
+		for {
+			fmt.Print("> ")
+			fmt.Scanln(&command)
+			switch command {
+			case "0":
+				err := postgres_handler.ListAllTables()
+				if err != nil {
+					fmt.Println("Error listing tables: ", err)
+				}
+			case "1":
+				var tableName string
+				fmt.Println("Enter table name: ")
+				fmt.Scanln(&tableName)
+				err := postgres_handler.ListColumnsOfTable(tableName)
+				if err != nil {
+					fmt.Println("Error listing columns: ", err)
+				}
+			case "2":
+				scanner := bufio.NewScanner(os.Stdin)
+				var query string
+				fmt.Println("Enter query:")
+				scanner.Scan()
+				query = scanner.Text()
+				fmt.Println("Query: ", query)
+				err := postgres_handler.ExecuteQuery(query)
+				if err != nil {
+					fmt.Println("Error executing query: ", err)
+				}
+			case "help":
+				postgres_handler.ShowHelp()
+			case "clear":
+				db_handler.ClearTerminal()
+			case "exit":
+				postgres_handler.Close()
+				fmt.Println("Disconnected from Postgres!")
+				return
+			default:
+				fmt.Println("Invalid command")
 			}
-
-			for i, value := range values {
-				columnName := string(columnNames[i].Name)
-				rowMap[columnName] = value
-			}
-
-			results = append(results, rowMap)
-		}
-
-		if err := rows.Err(); err != nil {
-			fmt.Println("Error iterating rows: ", err)
 		}
 
 	default:
