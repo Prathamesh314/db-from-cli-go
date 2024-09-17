@@ -55,51 +55,57 @@ func main() {
 		err := mongo_handler.ConnectToMongoDB()
 		if err != nil {
 			fmt.Println("Error connecting to MongoDB: ", err)
+			return
 		}
 		fmt.Println("Connected to MongoDB!")
 		var option string
-		fmt.Println("Choose what u want: ")
-		fmt.Println("1. Change Collection")
-		fmt.Println("2. Change Database")
-		fmt.Println("3. Find One")
-		fmt.Println("4. Find All")
-		fmt.Println("5. Insert One")
-		fmt.Println("6. Insert Many")
-		fmt.Println("7. Update One")
-		fmt.Println("8. Update Many")
-		fmt.Println("9. Delete One")
-		fmt.Println("10. Delete Many")
-		fmt.Println("11. Exit")
+		db_handler.ClearTerminal()
+		mongo_handler.ShowDetails()
+		mongo_handler.Help()
 		for {
 				fmt.Print("> ")
-			fmt.Scanln(&option)
-			switch option {
-			case "1":
-				fmt.Println("Enter new collection name: ")
-				fmt.Scanln(&collection_name)
-			case "2":
-				fmt.Println("Enter new database name: ")
-				fmt.Scanln(&database_name)
-			case "3":
-				fmt.Println("Enter (key, value) to find: ")
-				var key string
-				var value string
-				fmt.Scanln(&key, &value)
-				fmt.Printf("Finding one document with %s: %s\n", key, value)
-				result, err := mongo_handler.FindOne(key, value)
-				if err != nil {
-					fmt.Println("Error finding one document: ", err)
+				fmt.Scanln(&option)
+				switch option {
+				case "1":
+					fmt.Println("Enter new collection name: ")
+					fmt.Scanln(&collection_name)
+					err := mongo_handler.ChangeCollection(collection_name)
+					if err != nil {
+						fmt.Println("Error changing collection: ", err)
+					}
+
+				case "2":
+					fmt.Println("Enter new database name: ")
+					fmt.Scanln(&database_name)
+					fmt.Println("Enter new collection name: ")
+					fmt.Scanln(&collection_name)
+					err := mongo_handler.ChangeDatabase(database_name, collection_name)
+					if err != nil {
+						fmt.Println("Error changing database: ", err)
+					}
+				case "3":
+					fmt.Println("Enter (key, value) to find: ")
+					var key string
+					var value string
+					fmt.Scanln(&key, &value)
+					fmt.Printf("Finding one document with %s: %s\n", key, value)
+					result, err := mongo_handler.FindOne(key, value)
+					if err != nil {
+						fmt.Println("Error finding one document: ", err)
+					}
+					fmt.Println("Found one document: ", result)
+				case "4":
+					result, err := mongo_handler.FindAll()
+					if err != nil {
+						fmt.Println("Error finding all documents: ", err)
+					}
+					db_handler.PrettyPrint(result)
+				default:
+					mongo_handler.CloseConnection()
+					fmt.Println("Disconnected from MongoDB!")
+					return
 				}
-				fmt.Println("Found one document: ", result)
-			case "4":
-				result, err := mongo_handler.FindAll()
-				if err != nil {
-					fmt.Println("Error finding all documents: ", err)
-				}
-				fmt.Println("Found all documents: ", result)
 			}
-			break
-		}
 	case "2":
 		fmt.Println("Connecting to MySQL...")
 	case "3":
@@ -126,7 +132,6 @@ func main() {
 		var query string
 		fmt.Println("Enter space-separated values:")
 
-		// Scan the input
 		scanner.Scan()
 		query = scanner.Text()
 
@@ -136,19 +141,25 @@ func main() {
 			return
 		}
 		defer rows.Close()
-		// Process the results
+
+		columnNames := rows.FieldDescriptions()
+		results := []map[string]interface{}{}
+
 		for rows.Next() {
+			rowMap := make(map[string]interface{})
+
 			values, err := rows.Values()
 			if err != nil {
 				fmt.Println("Error scanning row: ", err)
 				continue
 			}
-			
-			// Print each row
-			for _, value := range values {
-				fmt.Printf("%v\n", value)
+
+			for i, value := range values {
+				columnName := string(columnNames[i].Name)
+				rowMap[columnName] = value
 			}
-			fmt.Println("---")
+
+			results = append(results, rowMap)
 		}
 
 		if err := rows.Err(); err != nil {
