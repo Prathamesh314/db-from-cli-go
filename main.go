@@ -6,6 +6,8 @@ import (
 	"db_cli/db_handler"
 	"fmt"
 	"os"
+
+	"github.com/joho/godotenv"
 )
 
 func main() {
@@ -16,6 +18,18 @@ func main() {
 	fmt.Println("Enter number of databse: ")
 	var db_name string
 
+	err := godotenv.Load()
+	if err != nil {
+		fmt.Errorf("error loading .env file: %v", err)
+	}
+
+	mongodb_uri := os.Getenv("MONGODB_URI")
+	POSTGRES_USER := os.Getenv("POSTGRES_USERNAME")
+	POSTGRES_PASSWORD := os.Getenv("POSTGRES_PASSWORD")
+	POSTGRES_HOST := os.Getenv("POSTGRES_HOST")
+	POSTGRES_PORT := os.Getenv("POSTGRES_PORT")
+	POSTGRES_DATABASE := os.Getenv("POSTGRES_DATABASE")
+
 	fmt.Scanln(&db_name)
 
 	switch db_name {
@@ -25,7 +39,7 @@ func main() {
 		fmt.Println("Enter MongoDB connection URI: ")
 		fmt.Scanln(&mongodb_connectin_uri)
 		if mongodb_connectin_uri == "" {
-			mongodb_connectin_uri = "mongodb+srv://affiliated:J42sd6P2aGwKZ1lN@cluster0.ufc2aiz.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+			mongodb_connectin_uri = mongodb_uri
 		}
 		var database_name string
 		fmt.Println("Enter database name: ")
@@ -89,24 +103,13 @@ func main() {
 	case "2":
 		fmt.Println("Connecting to MySQL...")
 	case "3":
-		fmt.Println("Connecting to Postgres...")
-		var postgres_user string
-		fmt.Println("Enter Postgres user: ")
-		fmt.Scanln(&postgres_user)
-		var postgres_password string
-		fmt.Println("Enter Postgres password: ")
-		fmt.Scanln(&postgres_password)
-		var postgres_host string
-		fmt.Println("Enter Postgres host: ")
-		fmt.Scanln(&postgres_host)
-		var postgres_port string
-		fmt.Println("Enter Postgres port: ")
-		fmt.Scanln(&postgres_port)
-		var postgres_database string
-		fmt.Println("Enter Postgres database: ")
-		fmt.Scanln(&postgres_database)
+		postgres_username := POSTGRES_USER
+		postgres_password := POSTGRES_PASSWORD
+		postgres_host := POSTGRES_HOST
+		postgres_port := POSTGRES_PORT
+		postgres_database := POSTGRES_DATABASE
 		postgres_handler := db_handler.PostgresHandler{
-			POSTGRES_USER: postgres_user,
+			POSTGRES_USER: postgres_username,
 			POSTGRES_PASSWORD: postgres_password,
 			POSTGRES_HOST: postgres_host,
 			POSTGRES_PORT: postgres_port,
@@ -126,7 +129,7 @@ func main() {
 		// Scan the input
 		scanner.Scan()
 		query = scanner.Text()
-		
+
 		rows, err := postgres_handler.POOl.Query(context.Background(), query)
 		if err != nil {
 			fmt.Println("Error executing query: ", err)
