@@ -173,6 +173,9 @@ func (self *MongoHandler) Help(){
 	fmt.Println("6. Delete One")
 	fmt.Println("7. Delete All")
 	fmt.Println("8. Exit")
+	fmt.Println("help: Show this menu")
+	fmt.Println("show: Show database and collection details")
+	fmt.Println("clear: Clear the terminal")
 }
 
 func (self *MongoHandler) MongoRunner(){
@@ -268,6 +271,12 @@ func (self *MongoHandler) MongoRunner(){
 			fmt.Println("Error deleting all documents: ", err)
 		}
 		fmt.Println("All documents deleted successfully!")
+	case "help":
+		self.Help()
+	case "show":
+		self.ShowDetails()
+	case "clear":
+		ClearTerminal()
 	default:
 		self.CloseConnection()
 		fmt.Println("Disconnected from MongoDB!")
@@ -282,6 +291,7 @@ func (self *MongoHandler) ShowDetails() {
 }
 
 func (self *MongoHandler) ChangeDatabase(database_name string, collection_name string) error {
+	
 	self.DatabaseName = database_name
 	self.CollectionName = collection_name
 	err := self.CloseConnection()
