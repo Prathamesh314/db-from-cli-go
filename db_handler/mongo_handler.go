@@ -131,7 +131,16 @@ func (self *MongoHandler) DeleteOne(key string, value string) error {
 	return nil
 }
 
+func (self *MongoHandler) ListAllDatabases() ([]string, error) {
+    databases, err := self.Client.ListDatabaseNames(context.TODO(), bson.M{})
+    if err != nil {
+        return nil, err
+    }
+    return databases, nil
+}
+
 func (self *MongoHandler) Help(){
+	fmt.Println("0. List All Databases")
 	fmt.Println("1. Change Collection")
 	fmt.Println("2. Change Database")
 	fmt.Println("3. Find One")
@@ -164,5 +173,50 @@ func (self *MongoHandler) ChangeDatabase(database_name string, collection_name s
 	}
 
 	self.ShowDetails()
+	return nil
+}
+
+func (self *MongoHandler) ListDbAndCollections() (error) {
+	databases, err := self.ListAllDatabases()
+	if err != nil {
+		return err
+	}
+	for i, database := range databases {
+		fmt.Println(i, ". ", database)
+	}
+	fmt.Println("\n")
+	var database_index int
+	fmt.Println("Enter database index: ")
+	fmt.Scanln(&database_index)
+	if !(database_index >= 0 && database_index<len(databases)) {
+		fmt.Println("Invalid database index")
+		return err
+	}
+	ClearTerminal()
+	db := self.Client.Database(databases[database_index])
+	collections, err := db.ListCollectionNames(context.TODO(), bson.D{{}})
+	if err != nil {
+		return err
+	}
+	for i, collection := range collections {
+		fmt.Println(i, ". ", collection)
+	}
+	fmt.Println("\n")
+	var collection_index int
+	fmt.Println("Enter collection index: ")
+	fmt.Scanln(&collection_index)
+	err = self.ChangeCollection(collections[collection_index])
+	if err != nil {
+		return err
+	}
+	if !(collection_index >= 0 && collection_index<len(collections)) {
+		fmt.Println("Invalid collection index")
+		return err
+	}
+	ClearTerminal()
+	err = self.ChangeDatabase(databases[database_index], collections[collection_index])
+	if err != nil {
+		return err
+	}
 	return nil
 }

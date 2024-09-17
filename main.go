@@ -63,10 +63,15 @@ func main() {
 		mongo_handler.ShowDetails()
 		mongo_handler.Help()
 		for {
-				fmt.Print("> ")
-				fmt.Scanln(&option)
-				switch option {
-				case "1":
+			fmt.Print("> ")
+			fmt.Scanln(&option)
+			switch option {
+			case "0":
+				err := mongo_handler.ListDbAndCollections()
+				if err != nil {
+					fmt.Println("Error listing databases and collections: ", err)
+				}
+			case "1":
 					fmt.Println("Enter new collection name: ")
 					fmt.Scanln(&collection_name)
 					err := mongo_handler.ChangeCollection(collection_name)
