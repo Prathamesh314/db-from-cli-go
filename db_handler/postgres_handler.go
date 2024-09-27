@@ -54,6 +54,8 @@ func (self *PostgresHandler) ShowHelp() {
 	fmt.Println("0. List all Tables")
 	fmt.Println("1. List Columns of a Table")
 	fmt.Println("2. Execute a Query")
+	fmt.Println("3. List all DataBases")
+	fmt.Println("4. Change Database")
 }
 
 func (self *PostgresHandler) ListAllDatabases() error {
@@ -118,6 +120,16 @@ func (self *PostgresHandler) ListAllTables() error {
 	fmt.Println("Tables in PostgreSQL:")
 	t.Render()
 	return nil
+}
+
+func (self *PostgresHandler) ChangeDataBase(databaseName string){
+	self.Close()
+
+	self.POSTGRES_DATABASE = databaseName
+
+	self.ConnectToPostgres()
+
+	fmt.Println("Change database -> %s", databaseName)
 }
 
 func (self *PostgresHandler) ListColumnsOfTable(tableName string) error {

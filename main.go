@@ -5,6 +5,7 @@ import (
 	"db_cli/db_handler"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -93,23 +94,24 @@ func main() {
 			postgres_database = POSTGRES_DATABASE
 		}
 		postgres_handler := db_handler.PostgresHandler{
-			POSTGRES_USER: postgres_username,
+			POSTGRES_USER:     postgres_username,
 			POSTGRES_PASSWORD: postgres_password,
-			POSTGRES_HOST: postgres_host,
-			POSTGRES_PORT: postgres_port,
+			POSTGRES_HOST:     postgres_host,
+			POSTGRES_PORT:     postgres_port,
 			POSTGRES_DATABASE: postgres_database,
 		}
-		fmt.Println(postgres_handler.POSTGRES_USER)
-		fmt.Println(postgres_handler.POSTGRES_PASSWORD)
-		fmt.Println(postgres_handler.POSTGRES_HOST)
-		fmt.Println(postgres_handler.POSTGRES_PORT)
-		fmt.Println(postgres_handler.POSTGRES_DATABASE)
+		
 		err := postgres_handler.ConnectToPostgres()
 		if err != nil {
 			fmt.Println("Error connecting to Postgres: ", err)
 			return
 		}
 		fmt.Println("Connected to Postgres!")
+
+		err = postgres_handler.ListAllDatabases()
+		if err != nil {
+			fmt.Println("Error listing databases: ", err)
+		}
 
 		postgres_handler.ShowHelp()
 		var command string
@@ -131,16 +133,34 @@ func main() {
 					fmt.Println("Error listing columns: ", err)
 				}
 			case "2":
+				fmt.Println("Enter your multiline query (type 'END' on a new line to finish):")
+				var queryLines []string
 				scanner := bufio.NewScanner(os.Stdin)
-				var query string
-				fmt.Println("Enter query:")
-				scanner.Scan()
-				query = scanner.Text()
-				fmt.Println("Query: ", query)
+				for scanner.Scan() {
+					line := scanner.Text()
+					if line == "END" {
+						break
+					}
+					queryLines = append(queryLines, line)
+				}
+				query := strings.Join(queryLines, "\n")
+				fmt.Println("Query to be executed:")
+				fmt.Println(query)
 				err := postgres_handler.ExecuteQuery(query)
 				if err != nil {
-					fmt.Println("Error executing query: ", err)
+					fmt.Println("Error executing query:", err)
 				}
+			case "3":
+				err := postgres_handler.ListAllDatabases()
+				if err != nil {
+					fmt.Println("Error listing databases: ", err)
+				}
+			case "4":
+				var dbName string
+				fmt.Print("Enter database name: ")
+				fmt.Scanln(&dbName)
+
+				postgres_handler.ChangeDataBase(dbName)
 			case "help":
 				postgres_handler.ShowHelp()
 			case "clear":
